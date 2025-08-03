@@ -1,1 +1,24 @@
-/target
+# Generated files and directories
+target/
+**/*.rs.bk
+**/*.rlib
+**/*.d
+**/*.o
+**/*.wasm
+**/*.a
+
+# IDE specific files
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Dependencies
+# If you are using vendored dependencies, you may want to ignore them.
+# For example, if you are using `cargo vendor`:
+# vendor/
