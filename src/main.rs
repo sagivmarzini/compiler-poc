@@ -1,5 +1,7 @@
 use std::{env, fs, io};
 
+mod ast;
+mod parser;
 mod token;
 
 fn main() {

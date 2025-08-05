@@ -1,6 +1,6 @@
 #[derive(Debug, PartialEq)]
 pub enum Token {
-    Number(f64),
+    Number(i64),
     Plus,
     Minus,
     Star,
@@ -35,7 +35,7 @@ pub fn tokenize(code: &str) -> Result<Vec<Token>, String> {
                 // Don't increment index again after match
                 index -= 1;
 
-                let number: f64 = num_str.parse().unwrap();
+                let number: i64 = num_str.parse().unwrap();
                 tokens.push(Token::Number(number));
             }
             ' ' | '\t' => {
