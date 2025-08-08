@@ -1,3 +1,5 @@
+use std::fmt::format;
+
 use crate::{ast::*, token::Token};
 
 #[derive(Debug, Clone)]
@@ -19,13 +21,28 @@ impl Parser {
 
     pub fn produce_AST(&mut self) -> Result<Program, ParseError> {}
 
-    fn parse_program(&mut self) -> Result<Program, ParseError> {}
-    fn parse_statement(&mut self) -> Result<Stmt, ParseError> {}
-    fn parse_expression(&mut self) -> Result<Expr, ParseError> {}
-    fn parse_primary(&mut self) -> Result<Expr, ParseError> {}
+    // fn parse_program(&mut self) -> Result<Program, ParseError> {}
+    // fn parse_statement(&mut self) -> Result<Stmt, ParseError> {}
+    // fn parse_expression(&mut self) -> Result<Expr, ParseError> {}
+    // fn parse_primary(&mut self) -> Result<Expr, ParseError> {}
 
     // Helper methods
-    fn peek(&self) -> Option<&Token> {}
-    fn eat(&mut self) -> Option<&Token> {}
-    fn expect(&mut self, expected: TokenType) -> Result<&Token, ParseError> {}
+    fn peek(&self) -> Option<&Token> {
+        self.tokens.get(self.pos)
+    }
+
+    fn eat(&mut self) -> Option<&Token> {
+        let token = self.tokens.get(self.pos);
+        self.pos += 1;
+
+        token
+    }
+
+    fn expect(&mut self, expected: Token) -> Result<&Token, ParseError> {
+        match self.tokens.get(self.pos) {
+            Some(token) if *token == expected => Ok(token),
+            Some(token) => Err(ParseError::UnexpectedToken(format!("{:?}", token))),
+            None => Err(ParseError::UnexpectedEOF),
+        }
+    }
 }
