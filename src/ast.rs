@@ -1,11 +1,11 @@
 #[derive(Debug, Clone, PartialEq)]
 pub enum Stmt {
-    Program(Program),
+    Equation(Equation),
     Expr(Box<Expr>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Program {
+pub struct Equation {
     pub body: Vec<Stmt>,
 }
 

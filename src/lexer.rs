@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Number(i64),
     Plus,
@@ -51,6 +51,10 @@ pub fn tokenize(code: &str) -> Result<Vec<Token>, String> {
         }
 
         index += 1;
+    }
+
+    if tokens[tokens.len() - 1] != Token::EOF {
+        tokens.push(Token::EOF);
     }
 
     Ok(tokens)
