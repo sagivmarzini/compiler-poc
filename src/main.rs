@@ -1,6 +1,7 @@
 use std::{env, fs, io};
 
 mod ast;
+mod interpreter;
 mod lexer;
 mod parser;
 
@@ -23,11 +24,18 @@ fn main() {
     }
 
     // # Tokenize the input into a list of tokens
+    println!("\n# Tokens: ");
     let tokens = lexer::tokenize(input.as_str()).expect("Error tokenizing the input");
     println!("{:?}", tokens);
 
     // # Parse the list of tokens into an AST (Abstract Syntax Tree)
+    println!("\n# AST: ");
     let mut parser = Parser::new(tokens);
     let equation = parser.produce_ast().expect("Error while parsing");
-    println!("\n{:?}", equation)
+    println!("{:?}", equation);
+
+    // # Traverse the AST and interpret the solution to the equation
+    println!("\n# Result: ");
+    let result = interpreter::evaluate(&equation);
+    println!("{:?}", result);
 }
