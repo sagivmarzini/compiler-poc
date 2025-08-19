@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     LBrace,
     RBrace,
@@ -11,14 +11,8 @@ pub enum Token {
     EOF,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Keyword {
     Function,
     Return,
 }
-
-/*
-    function main() {
-        return 0
-    }
-*/

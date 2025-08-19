@@ -1,71 +1,67 @@
+use std::collections::VecDeque;
+
 use super::token::{Keyword, Token};
 
 pub struct Lexer {
-    pos: usize,
-    source: Vec<char>,
+    source: VecDeque<char>,
+    line_index: i32,
+    inline_pos: i32,
 }
 
 impl Lexer {
     pub fn new(source_code: Vec<char>) -> Self {
         Lexer {
-            pos: 0,
-            source: source_code,
+            source: VecDeque::<char>::from_iter(source_code),
+            line_index: 0,
+            inline_pos: 0,
         }
     }
 
-    pub fn lex(&mut self) -> Result<Vec<Token>, String> {
-        let mut tokens = Vec::<Token>::new();
+    pub fn lex(&mut self) -> Result<VecDeque<Token>, String> {
+        let mut tokens = VecDeque::<Token>::new();
 
-        let mut line_index = 0;
-        let mut inline_pos = 0;
-
-        while self.pos < self.source.len() {
+        while !self.source.is_empty() {
             let current = self.eat().unwrap();
 
             match current {
-                '{' => tokens.push(Token::LBrace),
-                '}' => tokens.push(Token::RBrace),
-                '(' => tokens.push(Token::LParen),
-                ')' => tokens.push(Token::RParen),
-                ';' => tokens.push(Token::Semicolon),
+                '{' => tokens.push_back(Token::LBrace),
+                '}' => tokens.push_back(Token::RBrace),
+                '(' => tokens.push_back(Token::LParen),
+                ')' => tokens.push_back(Token::RParen),
+                ';' => tokens.push_back(Token::Semicolon),
                 '\t' | ' ' => {} // Skip whitespace
                 '\n' => {
-                    line_index += 1;
-                    inline_pos = 0
+                    self.line_index += 1;
+                    self.inline_pos = 0
                 }
-                '0'..='9' => tokens.push(Token::Integer(self.read_number(current)?)),
+                '0'..='9' => tokens.push_back(Token::Integer(self.read_number(current)?)),
                 'a'..='z' => match self.read_string(current)?.as_str() {
-                    "function" => tokens.push(Token::Keyword(Keyword::Function)),
-                    "return" => tokens.push(Token::Keyword(Keyword::Return)),
-                    string => tokens.push(Token::Identifer(String::from(string))),
+                    "function" => tokens.push_back(Token::Keyword(Keyword::Function)),
+                    "return" => tokens.push_back(Token::Keyword(Keyword::Return)),
+                    string => tokens.push_back(Token::Identifer(String::from(string))),
                 },
                 _ => {
                     return Err(format!(
                         "Unexpected character '{}' at line {}, column {}",
                         current,
-                        line_index + 1,
-                        inline_pos
+                        self.line_index + 1,
+                        self.inline_pos
                     ));
                 }
             }
-
-            inline_pos += 1;
         }
 
-        tokens.push(Token::EOF);
+        tokens.push_back(Token::EOF);
 
         Ok(tokens)
     }
 
-    fn peek(&self) -> Option<char> {
-        self.source.get(self.pos).copied()
+    fn peek(&self) -> Option<&char> {
+        self.source.front()
     }
-
     fn eat(&mut self) -> Option<char> {
-        let result = self.source.get(self.pos).copied();
-        self.pos += 1;
-
-        result
+        self.inline_pos += 1;
+        self.source.pop_front()
     }
 
     fn read_number(&mut self, first: char) -> Result<i64, String> {
@@ -88,7 +84,7 @@ impl Lexer {
         string.push(first);
 
         while let Some(ch) = self.peek() {
-            if ch.is_ascii_alphanumeric() || ch == '_' {
+            if ch.is_ascii_alphanumeric() || *ch == '_' {
                 string.push(self.eat().unwrap());
             } else {
                 break;

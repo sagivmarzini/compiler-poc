@@ -1,9 +1,15 @@
 mod lex;
+mod parse;
 
 use std::{env, fs, process::exit};
 
 use crate::lex::lexer::Lexer;
 
+/*
+    function main() {
+        return 0
+    }
+*/
 fn main() {
     let args: Vec<String> = env::args().collect();
 
