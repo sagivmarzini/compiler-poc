@@ -5,6 +5,8 @@ pub enum Token {
     LParen,
     RParen,
     Semicolon,
+    Minus,
+    Exclamation,
     Keyword(Keyword),
     Identifier(String),
     Integer(i64),

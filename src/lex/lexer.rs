@@ -29,6 +29,8 @@ impl Lexer {
                 '(' => tokens.push_back(Token::LParen),
                 ')' => tokens.push_back(Token::RParen),
                 ';' => tokens.push_back(Token::Semicolon),
+                '-' => tokens.push_back(Token::Minus),
+                '!' => tokens.push_back(Token::Exclamation),
                 '\t' | ' ' => {} // Skip whitespace
                 '\n' => {
                     self.line_index += 1;

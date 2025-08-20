@@ -56,7 +56,7 @@ impl CodeGenerator {
                 self.output += "mov rdi, ";
                 self.generate_expr(returned_expr);
                 self.output += "  ; exit code\n";
-                self.output += "syscall";
+                self.output += "syscall\n";
             }
             Context::Function(_) => {
                 self.output += "mov rax, ";

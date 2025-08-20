@@ -1,3 +1,7 @@
 function main() {
-  return 13;
+  return -40;
+}
+
+function foo() {
+  return !1;
 }
