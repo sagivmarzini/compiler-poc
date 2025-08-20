@@ -29,4 +29,17 @@ pub struct Function {
 pub enum Expr {
     IntegerLiteral(i64),
     Identifier(String),
+    UnaryOperation(UnaryOperation),
+}
+
+#[derive(Debug)]
+pub struct UnaryOperation {
+    operator: Operator,
+    value: Box<Expr>,
+}
+
+#[derive(Debug)]
+pub enum Operator {
+    Minus,
+    Not,
 }
