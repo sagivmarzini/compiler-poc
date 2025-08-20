@@ -37,7 +37,7 @@ impl Parser {
     pub fn generate_ast(&mut self) -> Result<Program, ParseError> {
         let mut program = Program::new();
 
-        while !matches!(self.peek(), Some(Token::EOF)) {
+        while !self.tokens.is_empty() && !matches!(self.peek(), Some(Token::EOF)) {
             program.body.push(self.parse_statement()?);
         }
 

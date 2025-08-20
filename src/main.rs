@@ -1,13 +1,14 @@
+mod codegen;
 mod lex;
 mod parse;
 
 use std::{env, fs, process::exit};
 
-use crate::{lex::lexer::Lexer, parse::parser::Parser};
+use crate::{codegen::generate::CodeGenerator, lex::Lexer, parse::Parser};
 
 /*
     function main() {
-        return 0
+        return 0;
     }
 */
 fn main() {
@@ -23,10 +24,18 @@ fn main() {
     let mut lexer = Lexer::new(input.chars().collect());
     let tokens = lexer.lex().expect("Error lexing the input file");
 
-    println!("Tokens: \n{:?}", tokens);
+    println!("Tokens: \n{:?}\n", tokens);
 
     let mut parser = Parser::new(tokens);
     let program = parser.generate_ast().expect("Error when generating AST");
 
-    println!("AST: \n{:?}", program);
+    println!("AST: \n{:?}\n", program);
+
+    let mut generator = CodeGenerator::new();
+    generator.generate_program(&program);
+
+    println!("Program: \n{}\n", generator.finalize());
+    generator
+        .compile()
+        .expect("Error generating the Assembly file");
 }
