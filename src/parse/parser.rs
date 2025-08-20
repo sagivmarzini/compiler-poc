@@ -7,6 +7,7 @@ use crate::lex::token::Token;
 pub enum ParseError {
     UnexpectedToken(Token),
     ExpectedIdentifier(Token),
+    ExpectedToken(Token),
     UnexpectedEOF,
     Custom(String),
 }
@@ -17,26 +18,26 @@ impl fmt::Display for ParseError {
             ParseError::UnexpectedEOF => write!(f, "Unexpected end of file"),
             ParseError::Custom(msg) => write!(f, "{}", msg),
             ParseError::ExpectedIdentifier(token) => {
-                write!(f, "Expected indentifer, instead gotten {:?}", token)
+                write!(f, "Expected identifier, instead gotten {:?}", token)
             }
+            ParseError::ExpectedToken(token) => write!(f, "Expected token missing: {:?}", token),
         }
     }
 }
 
 pub struct Parser {
     tokens: VecDeque<Token>,
-    pos: usize,
 }
 
 impl Parser {
     pub fn new(tokens: VecDeque<Token>) -> Self {
-        Parser { tokens, pos: 0 }
+        Parser { tokens }
     }
 
     pub fn generate_ast(&mut self) -> Result<Program, ParseError> {
         let mut program = Program::new();
 
-        while !self.tokens.is_empty() {
+        while !matches!(self.peek(), Some(Token::EOF)) {
             program.body.push(self.parse_statement()?);
         }
 
@@ -55,23 +56,23 @@ impl Parser {
                     // Peek or eat the next token and ensure it is an identifier
                     let func_name_token = self.eat().ok_or(ParseError::UnexpectedEOF)?;
                     let func_name = match func_name_token {
-                        Token::Identifer(name) => name, // grab the string inside
+                        Token::Identifier(name) => name, // grab the string inside
                         _ => return Err(ParseError::ExpectedIdentifier(func_name_token)),
                     };
 
                     // TODO: Parse function parameters
                     // For now just skip over the parenthesis
-                    self.eat();
-                    self.eat();
+                    self.expect(Token::LParen)?;
+                    self.expect(Token::RParen)?;
 
-                    self.eat(); // {
+                    self.expect(Token::LBrace)?;
 
                     let mut body = Vec::new();
                     while !self.check(Token::RBrace) {
                         // peek at next token, stop at '}'
                         body.push(self.parse_statement()?);
                     }
-                    self.eat(); // }
+                    self.expect(Token::RBrace)?;
 
                     Ok(Stmt::Function(Function {
                         name: func_name,
@@ -82,6 +83,7 @@ impl Parser {
                     self.eat(); // 'return' keyword
 
                     let expr = self.parse_expression()?;
+                    self.expect(Token::Semicolon)?;
 
                     Ok(Stmt::Return(Box::new(expr)))
                 }
@@ -90,7 +92,18 @@ impl Parser {
         }
     }
 
-    fn parse_expression(&mut self) -> Result<Expr, ParseError> {}
+    fn parse_expression(&mut self) -> Result<Expr, ParseError> {
+        self.parse_primary()
+    }
+
+    fn parse_primary(&mut self) -> Result<Expr, ParseError> {
+        match self.eat() {
+            Some(Token::Integer(num)) => Ok(Expr::IntegerLiteral(num)),
+            Some(Token::Identifier(identifier)) => Ok(Expr::Identifier(identifier)),
+            Some(token) => Err(ParseError::UnexpectedToken(token.clone())),
+            None => Err(ParseError::UnexpectedEOF),
+        }
+    }
 
     // Helper functions
     fn peek(&self) -> Option<&Token> {
@@ -101,5 +114,14 @@ impl Parser {
     }
     fn check(&self, token: Token) -> bool {
         *self.tokens.front().unwrap() == token
+    }
+    fn expect(&mut self, expect: Token) -> Result<Token, ParseError> {
+        let token = self.eat();
+
+        match token {
+            Some(token) if token == expect => Ok(token),
+            Some(_) => Err(ParseError::ExpectedToken(expect)),
+            None => Err(ParseError::UnexpectedEOF),
+        }
     }
 }

@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct Program {
     pub body: Vec<Stmt>,
 }
@@ -10,6 +11,7 @@ impl Program {
     }
 }
 
+#[derive(Debug)]
 pub enum Stmt {
     Function(Function),
     Return(Box<Expr>),
@@ -17,9 +19,14 @@ pub enum Stmt {
     Expr(Box<Expr>),
 }
 
+#[derive(Debug)]
 pub struct Function {
     pub name: String,
     pub body: Vec<Stmt>,
 }
 
-pub enum Expr {}
+#[derive(Debug)]
+pub enum Expr {
+    IntegerLiteral(i64),
+    Identifier(String),
+}

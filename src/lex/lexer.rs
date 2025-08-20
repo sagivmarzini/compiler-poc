@@ -38,7 +38,7 @@ impl Lexer {
                 'a'..='z' => match self.read_string(current)?.as_str() {
                     "function" => tokens.push_back(Token::Keyword(Keyword::Function)),
                     "return" => tokens.push_back(Token::Keyword(Keyword::Return)),
-                    string => tokens.push_back(Token::Identifer(String::from(string))),
+                    string => tokens.push_back(Token::Identifier(String::from(string))),
                 },
                 _ => {
                     return Err(format!(

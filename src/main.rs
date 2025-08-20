@@ -3,7 +3,7 @@ mod parse;
 
 use std::{env, fs, process::exit};
 
-use crate::lex::lexer::Lexer;
+use crate::{lex::lexer::Lexer, parse::parser::Parser};
 
 /*
     function main() {
@@ -23,5 +23,10 @@ fn main() {
     let mut lexer = Lexer::new(input.chars().collect());
     let tokens = lexer.lex().expect("Error lexing the input file");
 
-    println!("{:?}", tokens);
+    println!("Tokens: \n{:?}", tokens);
+
+    let mut parser = Parser::new(tokens);
+    let program = parser.generate_ast().expect("Error when generating AST");
+
+    println!("AST: \n{:?}", program);
 }

@@ -6,7 +6,7 @@ pub enum Token {
     RParen,
     Semicolon,
     Keyword(Keyword),
-    Identifer(String),
+    Identifier(String),
     Integer(i64),
     EOF,
 }
