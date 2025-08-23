@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 use thiserror::Error;
 
-use super::ast::{Expr, Function, Program, Stmt};
+use super::ast::{Expr, Function, Program, Stmt, UnaryOperation, UnaryOperator};
 use crate::lex::token::Token;
 
 #[derive(Debug, Error)]
@@ -86,6 +86,23 @@ impl Parser {
     }
 
     fn parse_expression(&mut self) -> Result<Expr, ParseError> {
+        self.parse_unary_expression()
+    }
+
+    fn parse_unary_expression(&mut self) -> Result<Expr, ParseError> {
+        if let Some(token) = self.peek() {
+            if let Some(operator) = Parser::token_to_unary_operator(token) {
+                self.eat(); // consume the operator
+
+                let value = self.parse_unary_expression()?; // recursive for chains
+
+                return Ok(Expr::UnaryOperation(UnaryOperation {
+                    operator,
+                    value: Box::new(value),
+                }));
+            }
+        }
+
         self.parse_primary()
     }
 
@@ -115,6 +132,14 @@ impl Parser {
             Some(token) if token == expect => Ok(token),
             Some(_) => Err(ParseError::ExpectedToken(expect)),
             None => Err(ParseError::UnexpectedEOF),
+        }
+    }
+
+    fn token_to_unary_operator(token: &Token) -> Option<UnaryOperator> {
+        match token {
+            Token::Minus => Some(UnaryOperator::Minus),
+            Token::Exclamation => Some(UnaryOperator::Not),
+            _ => None,
         }
     }
 }

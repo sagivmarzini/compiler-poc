@@ -74,6 +74,7 @@ impl CodeGenerator {
         match expr {
             Expr::IntegerLiteral(num) => self.output += num.to_string().as_str(),
             Expr::Identifier(identifier) => self.output += identifier,
+            Expr::UnaryOperation(unary_operation) => todo!(),
         }
     }
 

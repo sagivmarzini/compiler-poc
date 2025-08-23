@@ -34,12 +34,12 @@ pub enum Expr {
 
 #[derive(Debug)]
 pub struct UnaryOperation {
-    operator: Operator,
-    value: Box<Expr>,
+    pub operator: UnaryOperator,
+    pub value: Box<Expr>,
 }
 
 #[derive(Debug)]
-pub enum Operator {
+pub enum UnaryOperator {
     Minus,
     Not,
 }
