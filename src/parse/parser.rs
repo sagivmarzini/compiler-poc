@@ -1,28 +1,21 @@
-use std::{collections::VecDeque, fmt};
+use std::collections::VecDeque;
+use thiserror::Error;
 
 use super::ast::{Expr, Function, Program, Stmt};
 use crate::lex::token::Token;
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ParseError {
+    #[error("Unexpected token: {0:?}")]
     UnexpectedToken(Token),
+    #[error("Expected identifier, instead gotten {0:?}")]
     ExpectedIdentifier(Token),
+    #[error("Expected token missing: {0:?}")]
     ExpectedToken(Token),
+    #[error("Unexpected end of file")]
     UnexpectedEOF,
+    #[error("{0}")]
     Custom(String),
-}
-impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ParseError::UnexpectedToken(token) => write!(f, "Unexpected token: {:?}", token),
-            ParseError::UnexpectedEOF => write!(f, "Unexpected end of file"),
-            ParseError::Custom(msg) => write!(f, "{}", msg),
-            ParseError::ExpectedIdentifier(token) => {
-                write!(f, "Expected identifier, instead gotten {:?}", token)
-            }
-            ParseError::ExpectedToken(token) => write!(f, "Expected token missing: {:?}", token),
-        }
-    }
 }
 
 pub struct Parser {
