@@ -1,7 +1,7 @@
 use std::{io::Write, process::Command};
 
 use super::snippets;
-use crate::parse::ast::{self, Expr, Function, Program, Stmt, UnaryOperation};
+use crate::parse::ast::{self, BinaryExpression, Expr, Function, Program, Stmt, UnaryExpression};
 
 pub struct CodeGenerator {
     output: String,
@@ -69,26 +69,28 @@ impl CodeGenerator {
         }
     }
 
+    /// Generates assembly code for a given expression.
+    /// #
+    /// *This function assumes `rax` is the target register for the result of the expression.*
     fn generate_expr(&mut self, expr: &Expr) {
         match expr {
-            Expr::IntegerLiteral(num) => {
-                self.write_line(&format!("mov rax, {}", num));
-            }
+            Expr::IntegerLiteral(num) => self.write_line(&format!("mov rax, {}", num)),
             Expr::Identifier(identifier) => {
                 self.write_line(&format!("mov rax, [{}]", identifier));
                 // later when supporting vars
             }
-            Expr::UnaryOperation(unary_operation) => {
-                self.generate_unary_operation(unary_operation);
+            Expr::UnaryExpr(unary_operation) => self.generate_unary_operation(unary_operation),
+            Expr::BinaryExpr(binary_expression) => {
+                self.generate_binary_operation(binary_expression)
             }
         }
     }
 
-    fn generate_unary_operation(&mut self, unary_operation: &UnaryOperation) {
+    fn generate_unary_operation(&mut self, unary_operation: &UnaryExpression) {
         self.generate_expr(&unary_operation.operand);
 
         match unary_operation.operator {
-            ast::UnaryOperator::Minus => {
+            ast::UnaryOperator::Negative => {
                 self.write_line("neg rax");
             }
             ast::UnaryOperator::Not => {
@@ -96,6 +98,22 @@ impl CodeGenerator {
                 self.write_line("sete al");
                 self.write_line("movzx rax, al");
             }
+        }
+    }
+
+    fn generate_binary_operation(&mut self, binary_expression: &BinaryExpression) {
+        self.generate_expr(&binary_expression.left);
+        self.write_line("push rax");
+
+        self.generate_expr(&binary_expression.right);
+        self.write_line("mov rdx, rax");
+        self.write_line("pop rax");
+
+        match binary_expression.operator {
+            ast::BinaryOperator::Plus => self.write_line("add rax, rdx"),
+            ast::BinaryOperator::Minus => self.write_line("sub rax, rdx"),
+            ast::BinaryOperator::Multiply => self.write_line("imul rax, rdx"),
+            ast::BinaryOperator::Divide => self.write_line("idiv rax, rdx"),
         }
     }
 

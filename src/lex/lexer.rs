@@ -12,7 +12,7 @@ impl Lexer {
     pub fn new(source_code: Vec<char>) -> Self {
         Lexer {
             source: VecDeque::<char>::from_iter(source_code),
-            line_index: 0,
+            line_index: 1,
             inline_pos: 0,
         }
     }
@@ -31,6 +31,9 @@ impl Lexer {
                 ';' => tokens.push_back(Token::Semicolon),
                 '-' => tokens.push_back(Token::Minus),
                 '!' => tokens.push_back(Token::Exclamation),
+                '+' => tokens.push_back(Token::Plus),
+                '*' => tokens.push_back(Token::Star),
+                '/' => tokens.push_back(Token::Slash),
                 '\t' | ' ' => {} // Skip whitespace
                 '\n' => {
                     self.line_index += 1;
@@ -45,9 +48,7 @@ impl Lexer {
                 _ => {
                     return Err(format!(
                         "Unexpected character '{}' at line {}, column {}",
-                        current,
-                        self.line_index + 1,
-                        self.inline_pos
+                        current, self.line_index, self.inline_pos
                     ));
                 }
             }

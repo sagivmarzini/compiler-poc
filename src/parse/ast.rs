@@ -15,7 +15,6 @@ impl Program {
 pub enum Stmt {
     Function(Function),
     Return(Box<Expr>),
-
     Expr(Box<Expr>),
 }
 
@@ -29,17 +28,33 @@ pub struct Function {
 pub enum Expr {
     IntegerLiteral(i64),
     Identifier(String),
-    UnaryOperation(UnaryOperation),
+    UnaryExpr(UnaryExpression),
+    BinaryExpr(BinaryExpression),
 }
 
 #[derive(Debug)]
-pub struct UnaryOperation {
+pub struct UnaryExpression {
     pub operator: UnaryOperator,
     pub operand: Box<Expr>,
 }
 
 #[derive(Debug)]
 pub enum UnaryOperator {
-    Minus,
+    Negative,
     Not,
+}
+
+#[derive(Debug)]
+pub struct BinaryExpression {
+    pub left: Box<Expr>,
+    pub operator: BinaryOperator,
+    pub right: Box<Expr>,
+}
+
+#[derive(Debug)]
+pub enum BinaryOperator {
+    Plus,
+    Minus,
+    Multiply,
+    Divide,
 }

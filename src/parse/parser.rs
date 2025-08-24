@@ -1,7 +1,9 @@
 use std::collections::VecDeque;
 use thiserror::Error;
 
-use super::ast::{Expr, Function, Program, Stmt, UnaryOperation, UnaryOperator};
+use super::ast::{
+    BinaryExpression, BinaryOperator, Expr, Function, Program, Stmt, UnaryExpression, UnaryOperator,
+};
 use crate::lex::token::Token;
 
 #[derive(Debug, Error)]
@@ -86,7 +88,51 @@ impl Parser {
     }
 
     fn parse_expression(&mut self) -> Result<Expr, ParseError> {
-        self.parse_unary_expression()
+        self.parse_additive_expression()
+    }
+
+    fn parse_additive_expression(&mut self) -> Result<Expr, ParseError> {
+        let mut left = self.parse_multiplicative_expression()?;
+
+        while let Some(operator) = self.peek().and_then(Parser::token_to_binary_operator) {
+            if !matches!(operator, BinaryOperator::Plus | BinaryOperator::Minus) {
+                break;
+            }
+
+            self.eat(); // Consume the operator
+
+            let right = self.parse_multiplicative_expression()?;
+
+            left = Expr::BinaryExpr(BinaryExpression {
+                left: Box::new(left),
+                operator,
+                right: Box::new(right),
+            });
+        }
+
+        Ok(left)
+    }
+
+    fn parse_multiplicative_expression(&mut self) -> Result<Expr, ParseError> {
+        let mut left = self.parse_unary_expression()?;
+
+        while let Some(operator) = self.peek().and_then(Parser::token_to_binary_operator) {
+            if !matches!(operator, BinaryOperator::Multiply | BinaryOperator::Divide) {
+                break;
+            }
+
+            self.eat(); // Consume the operator
+
+            let right = self.parse_unary_expression()?;
+
+            left = Expr::BinaryExpr(BinaryExpression {
+                left: Box::new(left),
+                operator,
+                right: Box::new(right),
+            })
+        }
+
+        Ok(left)
     }
 
     fn parse_unary_expression(&mut self) -> Result<Expr, ParseError> {
@@ -96,7 +142,7 @@ impl Parser {
 
                 let operand = self.parse_unary_expression()?; // recursive for chains
 
-                return Ok(Expr::UnaryOperation(UnaryOperation {
+                return Ok(Expr::UnaryExpr(UnaryExpression {
                     operator,
                     operand: Box::new(operand),
                 }));
@@ -137,8 +183,18 @@ impl Parser {
 
     fn token_to_unary_operator(token: &Token) -> Option<UnaryOperator> {
         match token {
-            Token::Minus => Some(UnaryOperator::Minus),
+            Token::Minus => Some(UnaryOperator::Negative),
             Token::Exclamation => Some(UnaryOperator::Not),
+            _ => None,
+        }
+    }
+
+    fn token_to_binary_operator(token: &Token) -> Option<BinaryOperator> {
+        match token {
+            Token::Plus => Some(BinaryOperator::Plus),
+            Token::Minus => Some(BinaryOperator::Minus),
+            Token::Star => Some(BinaryOperator::Multiply),
+            Token::Slash => Some(BinaryOperator::Divide),
             _ => None,
         }
     }
