@@ -106,14 +106,14 @@ impl CodeGenerator {
         self.write_line("push rax");
 
         self.generate_expr(&binary_expression.right);
-        self.write_line("mov rdx, rax");
+        self.write_line("mov rcx, rax");
         self.write_line("pop rax");
 
         match binary_expression.operator {
-            ast::BinaryOperator::Plus => self.write_line("add rax, rdx"),
-            ast::BinaryOperator::Minus => self.write_line("sub rax, rdx"),
-            ast::BinaryOperator::Multiply => self.write_line("imul rax, rdx"),
-            ast::BinaryOperator::Divide => self.write_line("idiv rax, rdx"),
+            ast::BinaryOperator::Plus => self.write_line("add rax, rcx"),
+            ast::BinaryOperator::Minus => self.write_line("sub rax, rcx"),
+            ast::BinaryOperator::Multiply => self.write_line("imul rax, rcx"),
+            ast::BinaryOperator::Divide => self.write_line("idiv rcx"),
         }
     }
 
