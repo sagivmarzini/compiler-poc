@@ -35,7 +35,7 @@ pub enum Expr {
 #[derive(Debug)]
 pub struct UnaryOperation {
     pub operator: UnaryOperator,
-    pub value: Box<Expr>,
+    pub operand: Box<Expr>,
 }
 
 #[derive(Debug)]

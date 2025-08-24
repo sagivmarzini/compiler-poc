@@ -94,11 +94,11 @@ impl Parser {
             if let Some(operator) = Parser::token_to_unary_operator(token) {
                 self.eat(); // consume the operator
 
-                let value = self.parse_unary_expression()?; // recursive for chains
+                let operand = self.parse_unary_expression()?; // recursive for chains
 
                 return Ok(Expr::UnaryOperation(UnaryOperation {
                     operator,
-                    value: Box::new(value),
+                    operand: Box::new(operand),
                 }));
             }
         }

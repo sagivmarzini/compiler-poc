@@ -1,7 +1,7 @@
-use std::{fmt::Error, fs::File, io::Write, process::Command};
+use std::{io::Write, process::Command};
 
 use super::snippets;
-use crate::parse::ast::{Expr, Function, Program, Stmt};
+use crate::parse::ast::{self, Expr, Function, Program, Stmt, UnaryOperation};
 
 pub struct CodeGenerator {
     output: String,
@@ -21,7 +21,7 @@ impl CodeGenerator {
     }
 
     pub fn generate_program(&mut self, program: &Program) {
-        self.output += snippets::PROGRAM_PROLOGUE;
+        self.write(snippets::PROGRAM_PROLOGUE);
 
         for stmt in &program.body {
             self.generate_stmt(stmt, &Context::Program);
@@ -41,7 +41,8 @@ impl CodeGenerator {
             "main" => "_start".to_string(),
             _ => func.name.clone(),
         };
-        self.output += format!("\n{}:\n", label).as_str();
+        self.newline();
+        self.write_line(format!("{}:", label).as_str());
 
         let function_context = Context::Function(func.name.clone());
         for stmt in &func.body {
@@ -52,17 +53,15 @@ impl CodeGenerator {
     fn generate_return(&mut self, returned_expr: &Expr, context: &Context) {
         match context {
             Context::Function(name) if name == "main" => {
-                self.output += "mov rax, 60  ; syscall: exit\n";
-                self.output += "mov rdi, ";
                 self.generate_expr(returned_expr);
-                self.output += "  ; exit code\n";
-                self.output += "syscall\n";
+                self.write_line("mov rdi, rax    ; exit code");
+                self.write_line("mov rax, 60  ; syscall: exit");
+                self.write_line("syscall");
             }
             Context::Function(_) => {
-                self.output += "mov rax, ";
                 self.generate_expr(returned_expr);
                 self.newline();
-                self.output += "ret";
+                self.write_line("ret");
             }
             Context::Program => {
                 panic!("Invalid syntax: return cannot be at program level");
@@ -72,9 +71,31 @@ impl CodeGenerator {
 
     fn generate_expr(&mut self, expr: &Expr) {
         match expr {
-            Expr::IntegerLiteral(num) => self.output += num.to_string().as_str(),
-            Expr::Identifier(identifier) => self.output += identifier,
-            Expr::UnaryOperation(unary_operation) => todo!(),
+            Expr::IntegerLiteral(num) => {
+                self.write_line(&format!("mov rax, {}", num));
+            }
+            Expr::Identifier(identifier) => {
+                self.write_line(&format!("mov rax, [{}]", identifier));
+                // later when supporting vars
+            }
+            Expr::UnaryOperation(unary_operation) => {
+                self.generate_unary_operation(unary_operation);
+            }
+        }
+    }
+
+    fn generate_unary_operation(&mut self, unary_operation: &UnaryOperation) {
+        self.generate_expr(&unary_operation.operand);
+
+        match unary_operation.operator {
+            ast::UnaryOperator::Minus => {
+                self.write_line("neg rax");
+            }
+            ast::UnaryOperator::Not => {
+                self.write_line("cmp rax, 0");
+                self.write_line("sete al");
+                self.write_line("movzx rax, al");
+            }
         }
     }
 
@@ -84,6 +105,15 @@ impl CodeGenerator {
 
     fn newline(&mut self) {
         self.output.push('\n');
+    }
+
+    fn write_line(&mut self, line: &str) {
+        self.output += line;
+        self.newline();
+    }
+
+    fn write(&mut self, code: &str) {
+        self.output += code;
     }
 
     pub fn compile(&self) -> std::io::Result<()> {
