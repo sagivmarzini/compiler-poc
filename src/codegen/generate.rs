@@ -102,18 +102,20 @@ impl CodeGenerator {
     }
 
     fn generate_binary_operation(&mut self, binary_expression: &BinaryExpression) {
-        self.generate_expr(&binary_expression.left);
+        self.generate_expr(&binary_expression.right);
         self.write_line("push rax");
 
-        self.generate_expr(&binary_expression.right);
-        self.write_line("mov rcx, rax");
-        self.write_line("pop rax");
+        self.generate_expr(&binary_expression.left);
+        self.write_line("pop rcx");
 
         match binary_expression.operator {
             ast::BinaryOperator::Plus => self.write_line("add rax, rcx"),
             ast::BinaryOperator::Minus => self.write_line("sub rax, rcx"),
             ast::BinaryOperator::Multiply => self.write_line("imul rax, rcx"),
-            ast::BinaryOperator::Divide => self.write_line("idiv rcx"),
+            ast::BinaryOperator::Divide => {
+                self.write_line("cqo");
+                self.write_line("idiv rcx");
+            }
         }
     }
 
