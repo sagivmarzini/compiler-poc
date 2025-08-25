@@ -1,7 +1,9 @@
 function main() {
+  return 0 && 4 * 3;
+
   return 444 / 4 - 14 * 4 + 14;
 }
 
 function foo() {
-  return -1 + 5 * 8;
+  return -1 > -9;
 }

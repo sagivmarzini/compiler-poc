@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, fmt::format};
+use std::collections::VecDeque;
 
 use super::token::{Keyword, Token};
 
@@ -33,7 +33,10 @@ impl Lexer {
 
                 '-' => tokens.push_back(Token::Minus),
                 '!' => match self.peek() {
-                    Some('=') => tokens.push_back(Token::NotEqual),
+                    Some('=') => {
+                        self.eat();
+                        tokens.push_back(Token::NotEqual);
+                    }
                     _ => tokens.push_back(Token::Exclamation),
                 },
                 '+' => tokens.push_back(Token::Plus),
@@ -41,7 +44,10 @@ impl Lexer {
                 '/' => tokens.push_back(Token::Slash),
 
                 '&' => match self.peek() {
-                    Some('&') => tokens.push_back(Token::And),
+                    Some('&') => {
+                        self.eat();
+                        tokens.push_back(Token::And);
+                    }
                     _ => {
                         return Err(format!(
                             "Unexpected character '{}' at line {}, column {}",
@@ -50,7 +56,10 @@ impl Lexer {
                     }
                 },
                 '|' => match self.peek() {
-                    Some('|') => tokens.push_back(Token::Or),
+                    Some('|') => {
+                        self.eat();
+                        tokens.push_back(Token::Or);
+                    }
                     _ => {
                         return Err(format!(
                             "Unexpected character '{}' at line {}, column {}",
@@ -59,7 +68,10 @@ impl Lexer {
                     }
                 },
                 '=' => match self.peek() {
-                    Some('=') => tokens.push_back(Token::Equal),
+                    Some('=') => {
+                        self.eat();
+                        tokens.push_back(Token::Equal);
+                    }
                     _ => {
                         return Err(format!(
                             "Unexpected character '{}' at line {}, column {}",
@@ -68,11 +80,17 @@ impl Lexer {
                     }
                 },
                 '>' => match self.peek() {
-                    Some('=') => tokens.push_back(Token::GreaterEqual),
-                    _ => tokens.push_back(Token::GreaterEqual),
+                    Some('=') => {
+                        self.eat();
+                        tokens.push_back(Token::GreaterEqual);
+                    }
+                    _ => tokens.push_back(Token::Greater),
                 },
                 '<' => match self.peek() {
-                    Some('=') => tokens.push_back(Token::LessEqual),
+                    Some('=') => {
+                        self.eat();
+                        tokens.push_back(Token::LessEqual);
+                    }
                     _ => tokens.push_back(Token::Less),
                 },
 

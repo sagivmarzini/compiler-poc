@@ -1,7 +1,9 @@
 use std::{io::Write, process::Command};
 
 use super::snippets;
-use crate::parse::ast::{self, BinaryExpression, Expr, Function, Program, Stmt, UnaryExpression};
+use crate::parse::ast::{
+    self, BinaryExpression, BinaryOperator::*, Expr, Function, Program, Stmt, UnaryExpression,
+};
 
 #[derive(Debug, Clone)]
 pub enum Context {
@@ -11,12 +13,15 @@ pub enum Context {
 
 pub struct CodeGenerator {
     output: String,
+    label_count: i64,
+    // TODO: Add indentation for labels
 }
 
 impl CodeGenerator {
     pub fn new() -> Self {
         CodeGenerator {
             output: String::new(),
+            label_count: 0,
         }
     }
 
@@ -37,6 +42,7 @@ impl CodeGenerator {
     }
 
     fn generate_function(&mut self, func: &Function) {
+        // TODO: Name the entry point `main`
         let label: String = match func.name.as_str() {
             "main" => "_start".to_string(),
             _ => func.name.clone(),
@@ -110,17 +116,86 @@ impl CodeGenerator {
         self.write_line("pop rcx");
 
         match binary_expression.operator {
-            ast::BinaryOperator::Plus => self.write_line("add rax, rcx"),
-            ast::BinaryOperator::Multiply => self.write_line("imul rax, rcx"),
-
-            ast::BinaryOperator::Minus => {
+            Plus => self.write_line("add rax, rcx"),
+            Multiply => self.write_line("imul rax, rcx"),
+            Minus => {
                 self.write_line("sub rcx, rax");
                 self.write_line("mov rax, rcx");
             }
-            ast::BinaryOperator::Divide => {
+            Divide => {
                 self.write_line("xchg rax, rcx");
                 self.write_line("cqo");
                 self.write_line("idiv rcx");
+            }
+
+            Or => {
+                let check2_label = format!("_check2_{}", self.get_label_count());
+                let end_label = format!("_end_{}", self.get_label_count());
+
+                self.write_line("cmp rcx, 0");
+                self.write_line(&format!("je {}    ; left is 0, check right", check2_label));
+                self.write_line("mov rax, 1    ; we didn't jump, so left is true -> result is 1");
+                self.write_line(&format!("jmp {}", end_label));
+
+                self.write_label(&check2_label);
+                self.write_line("cmp rax, 0");
+                self.write_line("setne al");
+                self.write_line("movzx rax, al");
+
+                self.write_label(&end_label);
+            }
+            And => {
+                let check_right_label = self.generate_label("check_right");
+                let false_label = self.generate_label("false");
+                let end_label = self.generate_label("end");
+
+                self.write_line("cmp rcx, 0");
+                self.write_line(&format!(
+                    "jne {}    ; left isn't 0, check right",
+                    check_right_label
+                ));
+                self.write_line(&format!("jmp {}    ; left is 0, && is false", false_label));
+
+                self.write_label(&check_right_label);
+                self.write_line("cmp rax, 0");
+                self.write_line("setne al");
+                self.write_line("movzx rax, al");
+                self.write_line(&format!("jmp {}", end_label));
+
+                self.write_label(&false_label);
+                self.write_line("mov rax, 0    ; result of `&&` in rax");
+
+                self.write_label(&end_label);
+            }
+            Equal => {
+                self.write_line("cmp rax, rcx");
+                self.write_line("sete al");
+                self.write_line("movzx rax, al");
+            }
+            NotEqual => {
+                self.write_line("cmp rax, rcx");
+                self.write_line("setne al");
+                self.write_line("movzx rax, al");
+            }
+            Less => {
+                self.write_line("cmp rcx, rax");
+                self.write_line("setl al");
+                self.write_line("movzx rax, al");
+            }
+            LessEqual => {
+                self.write_line("cmp rcx, rax");
+                self.write_line("setle al");
+                self.write_line("movzx rax, al");
+            }
+            Greater => {
+                self.write_line("cmp rcx, rax");
+                self.write_line("setg al");
+                self.write_line("movzx rax, al");
+            }
+            GreaterEqual => {
+                self.write_line("cmp rcx, rax");
+                self.write_line("setge al");
+                self.write_line("movzx rax, al");
             }
         }
     }
@@ -140,6 +215,22 @@ impl CodeGenerator {
 
     fn write(&mut self, code: &str) {
         self.output += code;
+    }
+
+    fn write_label(&mut self, label: &str) {
+        self.newline();
+        self.write_line(&format!("{}:", label));
+    }
+
+    fn get_label_count(&mut self) -> i64 {
+        let label = self.label_count;
+        self.label_count += 1;
+
+        label
+    }
+
+    fn generate_label(&mut self, label: &str) -> String {
+        format!("_{}_{}", label, self.get_label_count())
     }
 
     pub fn compile(&self) -> std::io::Result<()> {

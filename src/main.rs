@@ -6,11 +6,6 @@ use std::{env, fs, process::exit, time::Instant};
 
 use crate::{codegen::generate::CodeGenerator, lex::Lexer, parse::Parser};
 
-/*
-    function main() {
-        return 0;
-    }
-*/
 fn main() {
     let args: Vec<String> = env::args().collect();
 

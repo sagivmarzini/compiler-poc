@@ -88,7 +88,101 @@ impl Parser {
     }
 
     fn parse_expression(&mut self) -> Result<Expr, ParseError> {
-        self.parse_additive_expression()
+        self.parse_logic_or_expression()
+    }
+
+    fn parse_logic_or_expression(&mut self) -> Result<Expr, ParseError> {
+        let mut left = self.parse_logic_and_expression()?;
+
+        while let Some(operator) = self.peek().and_then(Parser::token_to_binary_operator) {
+            if !matches!(operator, BinaryOperator::And) {
+                break;
+            }
+
+            self.eat(); // Consume the operator
+
+            let right = self.parse_logic_and_expression()?;
+
+            left = Expr::BinaryExpr(BinaryExpression {
+                left: Box::new(left),
+                operator,
+                right: Box::new(right),
+            });
+        }
+
+        Ok(left)
+    }
+
+    fn parse_logic_and_expression(&mut self) -> Result<Expr, ParseError> {
+        let mut left = self.parse_equality_expression()?;
+
+        while let Some(operator) = self.peek().and_then(Parser::token_to_binary_operator) {
+            if !matches!(operator, BinaryOperator::Or) {
+                break;
+            }
+
+            self.eat(); // Consume the operator
+
+            let right = self.parse_equality_expression()?;
+
+            left = Expr::BinaryExpr(BinaryExpression {
+                left: Box::new(left),
+                operator,
+                right: Box::new(right),
+            });
+        }
+
+        Ok(left)
+    }
+
+    fn parse_equality_expression(&mut self) -> Result<Expr, ParseError> {
+        let mut left = self.parse_comparison_expression()?;
+
+        while let Some(operator) = self.peek().and_then(Parser::token_to_binary_operator) {
+            if !matches!(operator, BinaryOperator::Equal | BinaryOperator::NotEqual) {
+                break;
+            }
+
+            self.eat(); // Consume the operator
+
+            let right = self.parse_comparison_expression()?;
+
+            left = Expr::BinaryExpr(BinaryExpression {
+                left: Box::new(left),
+                operator,
+                right: Box::new(right),
+            });
+        }
+
+        Ok(left)
+    }
+
+    fn parse_comparison_expression(&mut self) -> Result<Expr, ParseError> {
+        let mut left = self.parse_additive_expression()?;
+
+        while let Some(operator) = self.peek().and_then(Parser::token_to_binary_operator) {
+            if !matches!(
+                operator,
+                BinaryOperator::Less
+                    | BinaryOperator::LessEqual
+                    | BinaryOperator::Greater
+                    | BinaryOperator::GreaterEqual
+            ) {
+                break;
+            }
+
+            self.eat(); // Consume the operator
+
+            let right = self.parse_additive_expression()?;
+
+            left = Expr::BinaryExpr(BinaryExpression {
+                left: Box::new(left),
+                operator,
+                right: Box::new(right),
+            });
+        }
+
+        Ok(left)
     }
 
     fn parse_additive_expression(&mut self) -> Result<Expr, ParseError> {
@@ -182,20 +276,28 @@ impl Parser {
     }
 
     fn token_to_unary_operator(token: &Token) -> Option<UnaryOperator> {
-        match token {
-            Token::Minus => Some(UnaryOperator::Negative),
-            Token::Exclamation => Some(UnaryOperator::Not),
-            _ => None,
-        }
+        Some(match token {
+            Token::Minus => UnaryOperator::Negative,
+            Token::Exclamation => UnaryOperator::Not,
+            _ => return None,
+        })
     }
 
     fn token_to_binary_operator(token: &Token) -> Option<BinaryOperator> {
-        match token {
-            Token::Plus => Some(BinaryOperator::Plus),
-            Token::Minus => Some(BinaryOperator::Minus),
-            Token::Star => Some(BinaryOperator::Multiply),
-            Token::Slash => Some(BinaryOperator::Divide),
-            _ => None,
-        }
+        Some(match token {
+            Token::Plus => BinaryOperator::Plus,
+            Token::Minus => BinaryOperator::Minus,
+            Token::Star => BinaryOperator::Multiply,
+            Token::Slash => BinaryOperator::Divide,
+            Token::And => BinaryOperator::And,
+            Token::Or => BinaryOperator::Or,
+            Token::Equal => BinaryOperator::Equal,
+            Token::NotEqual => BinaryOperator::NotEqual,
+            Token::Less => BinaryOperator::Less,
+            Token::LessEqual => BinaryOperator::LessEqual,
+            Token::Greater => BinaryOperator::Greater,
+            Token::GreaterEqual => BinaryOperator::GreaterEqual,
+            _ => return None,
+        })
     }
 }
