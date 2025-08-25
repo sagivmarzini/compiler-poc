@@ -3,14 +3,14 @@ use std::{io::Write, process::Command};
 use super::snippets;
 use crate::parse::ast::{self, BinaryExpression, Expr, Function, Program, Stmt, UnaryExpression};
 
-pub struct CodeGenerator {
-    output: String,
-}
-
 #[derive(Debug, Clone)]
 pub enum Context {
     Program,
     Function(String), // Store function name
+}
+
+pub struct CodeGenerator {
+    output: String,
 }
 
 impl CodeGenerator {
@@ -41,6 +41,7 @@ impl CodeGenerator {
             "main" => "_start".to_string(),
             _ => func.name.clone(),
         };
+
         self.newline();
         self.write_line(format!("{}:", label).as_str());
 

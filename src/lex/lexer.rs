@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque, fmt::format};
 
 use super::token::{Keyword, Token};
 
@@ -28,12 +28,54 @@ impl Lexer {
                 '}' => tokens.push_back(Token::RBrace),
                 '(' => tokens.push_back(Token::LParen),
                 ')' => tokens.push_back(Token::RParen),
+
                 ';' => tokens.push_back(Token::Semicolon),
+
                 '-' => tokens.push_back(Token::Minus),
-                '!' => tokens.push_back(Token::Exclamation),
+                '!' => match self.peek() {
+                    Some('=') => tokens.push_back(Token::NotEqual),
+                    _ => tokens.push_back(Token::Exclamation),
+                },
                 '+' => tokens.push_back(Token::Plus),
                 '*' => tokens.push_back(Token::Star),
                 '/' => tokens.push_back(Token::Slash),
+
+                '&' => match self.peek() {
+                    Some('&') => tokens.push_back(Token::And),
+                    _ => {
+                        return Err(format!(
+                            "Unexpected character '{}' at line {}, column {}",
+                            current, self.line_index, self.inline_pos
+                        ));
+                    }
+                },
+                '|' => match self.peek() {
+                    Some('|') => tokens.push_back(Token::Or),
+                    _ => {
+                        return Err(format!(
+                            "Unexpected character '{}' at line {}, column {}",
+                            current, self.line_index, self.inline_pos
+                        ));
+                    }
+                },
+                '=' => match self.peek() {
+                    Some('=') => tokens.push_back(Token::Equal),
+                    _ => {
+                        return Err(format!(
+                            "Unexpected character '{}' at line {}, column {}",
+                            current, self.line_index, self.inline_pos
+                        ));
+                    }
+                },
+                '>' => match self.peek() {
+                    Some('=') => tokens.push_back(Token::GreaterEqual),
+                    _ => tokens.push_back(Token::GreaterEqual),
+                },
+                '<' => match self.peek() {
+                    Some('=') => tokens.push_back(Token::LessEqual),
+                    _ => tokens.push_back(Token::Less),
+                },
+
                 '\t' | ' ' => {} // Skip whitespace
                 '\n' => {
                     self.line_index += 1;
