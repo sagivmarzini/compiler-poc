@@ -14,7 +14,7 @@ pub enum Context {
 pub struct CodeGenerator {
     output: String,
     label_count: i64,
-    // TODO: Add indentation for labels
+    indent_count: usize,
 }
 
 impl CodeGenerator {
@@ -22,11 +22,12 @@ impl CodeGenerator {
         CodeGenerator {
             output: String::new(),
             label_count: 0,
+            indent_count: 0,
         }
     }
 
     pub fn generate_program(&mut self, program: &Program) {
-        self.write(snippets::PROGRAM_PROLOGUE);
+        self.write_line(snippets::PROGRAM_PROLOGUE);
 
         for stmt in &program.body {
             self.generate_stmt(stmt, &Context::Program);
@@ -42,19 +43,14 @@ impl CodeGenerator {
     }
 
     fn generate_function(&mut self, func: &Function) {
-        // TODO: Name the entry point `main`
-        let label: String = match func.name.as_str() {
-            "main" => "_start".to_string(),
-            _ => func.name.clone(),
-        };
-
-        self.newline();
-        self.write_line(format!("{}:", label).as_str());
+        self.start_label(&func.name);
 
         let function_context = Context::Function(func.name.clone());
         for stmt in &func.body {
             self.generate_stmt(stmt, &function_context);
         }
+
+        self.close_label();
     }
 
     fn generate_return(&mut self, returned_expr: &Expr, context: &Context) {
@@ -137,12 +133,14 @@ impl CodeGenerator {
                 self.write_line("mov rax, 1    ; we didn't jump, so left is true -> result is 1");
                 self.write_line(&format!("jmp {}", end_label));
 
-                self.write_label(&check2_label);
+                self.start_label(&check2_label);
                 self.write_line("cmp rax, 0");
                 self.write_line("setne al");
                 self.write_line("movzx rax, al");
+                self.close_label();
 
-                self.write_label(&end_label);
+                self.start_label(&end_label);
+                self.close_label();
             }
             And => {
                 let check_right_label = self.generate_label("check_right");
@@ -156,16 +154,19 @@ impl CodeGenerator {
                 ));
                 self.write_line(&format!("jmp {}    ; left is 0, && is false", false_label));
 
-                self.write_label(&check_right_label);
+                self.start_label(&check_right_label);
                 self.write_line("cmp rax, 0");
                 self.write_line("setne al");
                 self.write_line("movzx rax, al");
                 self.write_line(&format!("jmp {}", end_label));
+                self.close_label();
 
-                self.write_label(&false_label);
+                self.start_label(&false_label);
                 self.write_line("mov rax, 0    ; result of `&&` in rax");
+                self.close_label();
 
-                self.write_label(&end_label);
+                self.start_label(&end_label);
+                self.close_label();
             }
             Equal => {
                 self.write_line("cmp rax, rcx");
@@ -209,17 +210,19 @@ impl CodeGenerator {
     }
 
     fn write_line(&mut self, line: &str) {
+        self.output += &"    ".repeat(self.indent_count);
         self.output += line;
         self.newline();
     }
 
-    fn write(&mut self, code: &str) {
-        self.output += code;
-    }
-
-    fn write_label(&mut self, label: &str) {
+    fn start_label(&mut self, label: &str) {
         self.newline();
         self.write_line(&format!("{}:", label));
+        self.indent_count += 1;
+    }
+
+    fn close_label(&mut self) {
+        self.indent_count -= 1;
     }
 
     fn get_label_count(&mut self) -> i64 {
