@@ -26,43 +26,43 @@ impl CodeGenerator {
         }
     }
 
-    pub fn generate_program(&mut self, program: &Program) {
+    pub fn write_program(&mut self, program: &Program) {
         self.write_line(snippets::PROGRAM_PROLOGUE);
 
         for stmt in &program.body {
-            self.generate_stmt(stmt, &Context::Program);
+            self.write_stmt(stmt, &Context::Program);
         }
     }
 
-    fn generate_stmt(&mut self, stmt: &Stmt, context: &Context) {
+    fn write_stmt(&mut self, stmt: &Stmt, context: &Context) {
         match stmt {
-            Stmt::Function(function) => self.generate_function(function),
-            Stmt::Return(returned) => self.generate_return(returned, context),
-            Stmt::Expr(expr) => self.generate_expr(expr),
+            Stmt::Function(function) => self.write_function(function),
+            Stmt::Return(returned) => self.write_return(returned, context),
+            Stmt::Expr(expr) => self.write_expr(expr),
         }
     }
 
-    fn generate_function(&mut self, func: &Function) {
+    fn write_function(&mut self, func: &Function) {
         self.start_label(&func.name);
 
         let function_context = Context::Function(func.name.clone());
         for stmt in &func.body {
-            self.generate_stmt(stmt, &function_context);
+            self.write_stmt(stmt, &function_context);
         }
 
         self.close_label();
     }
 
-    fn generate_return(&mut self, returned_expr: &Expr, context: &Context) {
+    fn write_return(&mut self, returned_expr: &Expr, context: &Context) {
         match context {
             Context::Function(name) if name == "main" => {
-                self.generate_expr(returned_expr);
+                self.write_expr(returned_expr);
                 self.write_line("mov rdi, rax    ; exit code");
                 self.write_line("mov rax, 60  ; syscall: exit");
                 self.write_line("syscall");
             }
             Context::Function(_) => {
-                self.generate_expr(returned_expr);
+                self.write_expr(returned_expr);
                 self.newline();
                 self.write_line("ret");
             }
@@ -75,22 +75,20 @@ impl CodeGenerator {
     /// Generates assembly code for a given expression.
     /// #
     /// *This function assumes `rax` is the target register for the result of the expression.*
-    fn generate_expr(&mut self, expr: &Expr) {
+    fn write_expr(&mut self, expr: &Expr) {
         match expr {
             Expr::IntegerLiteral(num) => self.write_line(&format!("mov rax, {}", num)),
             Expr::Identifier(identifier) => {
                 self.write_line(&format!("mov rax, [{}]", identifier));
                 // later when supporting vars
             }
-            Expr::UnaryExpr(unary_operation) => self.generate_unary_operation(unary_operation),
-            Expr::BinaryExpr(binary_expression) => {
-                self.generate_binary_operation(binary_expression)
-            }
+            Expr::UnaryExpr(unary_operation) => self.write_unary_operation(unary_operation),
+            Expr::BinaryExpr(binary_expression) => self.write_binary_operation(binary_expression),
         }
     }
 
-    fn generate_unary_operation(&mut self, unary_operation: &UnaryExpression) {
-        self.generate_expr(&unary_operation.operand);
+    fn write_unary_operation(&mut self, unary_operation: &UnaryExpression) {
+        self.write_expr(&unary_operation.operand);
 
         match unary_operation.operator {
             ast::UnaryOperator::Negative => {
@@ -104,12 +102,15 @@ impl CodeGenerator {
         }
     }
 
-    fn generate_binary_operation(&mut self, binary_expression: &BinaryExpression) {
-        self.generate_expr(&binary_expression.left);
+    fn write_binary_operation(&mut self, binary_expression: &BinaryExpression) {
+        self.write_expr(&binary_expression.left);
         self.write_line("push rax");
 
-        self.generate_expr(&binary_expression.right);
+        self.write_expr(&binary_expression.right);
         self.write_line("pop rcx");
+
+        // RCX = left
+        // RAX = right
 
         match binary_expression.operator {
             Plus => self.write_line("add rax, rcx"),
@@ -125,44 +126,40 @@ impl CodeGenerator {
             }
 
             Or => {
-                let check2_label = format!("_check2_{}", self.get_label_count());
-                let end_label = format!("_end_{}", self.get_label_count());
+                let true_label = self.generate_label("true");
+                let false_label = self.generate_label("false");
+                let end_label = self.generate_label("end");
 
                 self.write_line("cmp rcx, 0");
-                self.write_line(&format!("je {}    ; left is 0, check right", check2_label));
-                self.write_line("mov rax, 1    ; we didn't jump, so left is true -> result is 1");
-                self.write_line(&format!("jmp {}", end_label));
-
-                self.start_label(&check2_label);
+                self.write_jump_instruction("jne", &true_label);
                 self.write_line("cmp rax, 0");
-                self.write_line("setne al");
-                self.write_line("movzx rax, al");
+                self.write_jump_instruction("je", &false_label);
+
+                self.start_label(&true_label);
+                self.write_line("mov rax, 1");
+                self.write_jump_instruction("jmp", &end_label);
+                self.close_label();
+
+                self.start_label(&false_label);
+                self.write_line("mov rax, 0");
                 self.close_label();
 
                 self.start_label(&end_label);
                 self.close_label();
             }
             And => {
-                let check_right_label = self.generate_label("check_right");
                 let false_label = self.generate_label("false");
                 let end_label = self.generate_label("end");
 
                 self.write_line("cmp rcx, 0");
-                self.write_line(&format!(
-                    "jne {}    ; left isn't 0, check right",
-                    check_right_label
-                ));
-                self.write_line(&format!("jmp {}    ; left is 0, && is false", false_label));
-
-                self.start_label(&check_right_label);
+                self.write_jump_instruction("je", &false_label);
                 self.write_line("cmp rax, 0");
-                self.write_line("setne al");
-                self.write_line("movzx rax, al");
-                self.write_line(&format!("jmp {}", end_label));
-                self.close_label();
+                self.write_jump_instruction("je", &false_label);
+                self.write_line("mov eax, 1");
+                self.write_jump_instruction("jmp", &end_label);
 
                 self.start_label(&false_label);
-                self.write_line("mov rax, 0    ; result of `&&` in rax");
+                self.write_line("mov rax, 0");
                 self.close_label();
 
                 self.start_label(&end_label);
@@ -221,6 +218,7 @@ impl CodeGenerator {
         self.indent_count += 1;
     }
 
+    /// Decrements the indentation by one
     fn close_label(&mut self) {
         self.indent_count -= 1;
     }
@@ -234,6 +232,10 @@ impl CodeGenerator {
 
     fn generate_label(&mut self, label: &str) -> String {
         format!("_{}_{}", label, self.get_label_count())
+    }
+
+    fn write_jump_instruction(&mut self, instruction: &str, label: &str) {
+        self.write_line(&format!("{} {}", instruction, label));
     }
 
     pub fn compile(&self) -> std::io::Result<()> {
