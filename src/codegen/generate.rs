@@ -1,16 +1,16 @@
 use std::{io::Write, process::Command};
 
+use super::context::Context;
 use super::snippets;
-use crate::parse::ast::{
-    self, BinaryExpression, BinaryOperator::*, Expression, Function, Program, Statement,
-    UnaryExpression,
+use crate::{
+    codegen::context::ScopeData,
+    parse::ast::{
+        self, BinaryExpression, BinaryOperator::*, Expression, Function, Program, Statement,
+        UnaryExpression,
+    },
 };
 
-#[derive(Debug, Clone)]
-pub enum Context {
-    Program,
-    Function(String), // Store function name
-}
+const VAR_SIZE_BYTES: i64 = 8;
 
 pub struct CodeGenerator {
     output: String,
@@ -31,45 +31,64 @@ impl CodeGenerator {
     pub fn emit_program(&mut self, program: &Program) {
         self.emit_line(snippets::PROGRAM_PROLOGUE);
 
+        let mut context = Context::new_program();
+
         for statement in &program.body {
-            self.emit_statement(statement, &Context::Program);
+            self.emit_statement(statement, &mut context);
         }
     }
 
-    fn emit_statement(&mut self, statement: &Statement, context: &Context) {
+    fn emit_statement(&mut self, statement: &Statement, context: &mut Context) {
         match statement {
             Statement::Function(function) => self.emit_function(function),
             Statement::Return(returned) => self.emit_return(returned, context),
-            Statement::Expression(expression) => self.emit_expression_to_register(expression),
-            Statement::VarDeclaration(var_declaration) => todo!(),
+            Statement::Expression(expression) => {
+                self.emit_expression_to_register(expression, context.scope_data())
+            }
+            Statement::VarDeclaration(var_declaration) => {
+                self.emit_var_declaration(var_declaration, context)
+            }
         }
     }
 
     fn emit_function(&mut self, func: &Function) {
         self.enter_label(&func.name);
+        self.emit_function_prologue();
 
-        let function_context = Context::Function(func.name.clone());
+        // Mark where we might need to insert stack allocation
+        let stack_alloc_position = self.output.len();
+
+        let mut function_context = Context::new_function(func.name.clone());
         for statement in &func.body {
-            self.emit_statement(statement, &function_context);
+            self.emit_statement(statement, &mut function_context);
         }
 
+        // Now we know how much stack space we used
+        let total_stack_used = function_context.scope_data().stack_offset;
+        if total_stack_used > 0 {
+            self.emit_line_at_position(
+                &format!("sub rsp, {}\n", total_stack_used),
+                stack_alloc_position,
+            );
+        }
+
+        self.newline();
+        self.emit_function_epilogue();
         self.exit_label();
     }
 
     fn emit_return(&mut self, returned: &Expression, context: &Context) {
         match context {
-            Context::Function(name) if name == "main" => {
-                self.emit_expression_to_register(returned);
+            Context::Function { name, .. } if name == "main" => {
+                self.emit_expression_to_register(returned, context.scope_data());
                 self.emit_line("mov rdi, rax    ; exit code");
                 self.emit_line("mov rax, 60  ; syscall: exit");
                 self.emit_line("syscall");
             }
-            Context::Function(_) => {
-                self.emit_expression_to_register(returned);
-                self.newline();
-                self.emit_line("ret");
+            Context::Function { .. } => {
+                self.emit_expression_to_register(returned, context.scope_data());
             }
-            Context::Program => {
+            Context::Program { .. } => {
                 panic!("Invalid syntax: return cannot be at program level");
             }
         }
@@ -78,24 +97,29 @@ impl CodeGenerator {
     /// Generates assembly code for a given expression.
     /// #
     /// *This function assumes `rax` is the target register for the result of the expression.*
-    fn emit_expression_to_register(&mut self, expression: &Expression) {
+    fn emit_expression_to_register(&mut self, expression: &Expression, scope: &ScopeData) {
         match expression {
             Expression::IntegerLiteral(num) => self.emit_line(&format!("mov rax, {}", num)),
             Expression::Identifier(identifier) => {
-                self.emit_line(&format!("mov rax, [{}]", identifier));
-                // later when supporting vars
+                self.emit_line(&format!(
+                    "mov rax, [rbp-{}]",
+                    scope.locals.get(identifier).expect(&format!(
+                        "Identifier '{}' is not declared in the current scope",
+                        identifier
+                    ))
+                ));
             }
             Expression::UnaryExpression(unary_operation) => {
-                self.emit_unary_operation(unary_operation)
+                self.emit_unary_operation(unary_operation, scope)
             }
             Expression::BinaryExpression(binary_expression) => {
-                self.emit_binary_operation(binary_expression)
+                self.emit_binary_operation(binary_expression, scope)
             }
         }
     }
 
-    fn emit_unary_operation(&mut self, unary_operation: &UnaryExpression) {
-        self.emit_expression_to_register(&unary_operation.operand);
+    fn emit_unary_operation(&mut self, unary_operation: &UnaryExpression, scope: &ScopeData) {
+        self.emit_expression_to_register(&unary_operation.operand, scope);
 
         match unary_operation.operator {
             ast::UnaryOperator::Negative => {
@@ -109,13 +133,13 @@ impl CodeGenerator {
         }
     }
 
-    fn emit_binary_operation(&mut self, binary_expression: &BinaryExpression) {
+    fn emit_binary_operation(&mut self, binary_expression: &BinaryExpression, scope: &ScopeData) {
         // Evaluate right-hand side first
-        self.emit_expression_to_register(&binary_expression.right);
+        self.emit_expression_to_register(&binary_expression.right, scope);
         self.emit_line("push rax");
 
         // Then evaluate left-hand side
-        self.emit_expression_to_register(&binary_expression.left);
+        self.emit_expression_to_register(&binary_expression.left, scope);
         self.emit_line("pop rcx");
 
         // RAX = left
@@ -210,6 +234,30 @@ impl CodeGenerator {
         self.exit_label();
     }
 
+    fn emit_var_declaration(
+        &mut self,
+        var_declaration: &ast::VarDeclaration,
+        context: &mut Context,
+    ) {
+        {
+            let scope_data = context.scope_data_mut();
+
+            if scope_data.locals.contains_key(&var_declaration.var_name) {
+                panic!(
+                    "Variable with the name '{}' already exists in this scope",
+                    var_declaration.var_name
+                );
+            }
+            scope_data.stack_offset += VAR_SIZE_BYTES;
+            scope_data
+                .locals
+                .insert(var_declaration.var_name.clone(), scope_data.stack_offset);
+
+            self.emit_expression_to_register(&var_declaration.value, scope_data);
+            self.emit_line(&format!("mov [rbp-{}], rax", scope_data.stack_offset));
+        }
+    }
+
     pub fn finalize(&self) -> &str {
         &self.output
     }
@@ -221,6 +269,12 @@ impl CodeGenerator {
     fn emit_line(&mut self, line: &str) {
         self.output += &"    ".repeat(self.indent_count);
         self.output += line;
+        self.newline();
+    }
+
+    fn emit_line_at_position(&mut self, line: &str, position: usize) {
+        let insert = format!("{}{}\n", &"    ".repeat(self.indent_count), line);
+        self.output.insert_str(position, &insert);
         self.newline();
     }
 
@@ -278,5 +332,16 @@ impl CodeGenerator {
         Command::new("./out").output()?;
 
         Ok(())
+    }
+
+    fn emit_function_prologue(&mut self) {
+        self.emit_line("push rbp");
+        self.emit_line("mov rbp, rsp");
+        // TODO: Replace with the instruction `enter N, 0` with number of bytes to reserve
+    }
+
+    fn emit_function_epilogue(&mut self) {
+        self.emit_line("leave");
+        self.emit_line("ret");
     }
 }

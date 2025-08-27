@@ -31,6 +31,7 @@ impl Lexer {
 
                 ';' => tokens.push_back(Token::Semicolon),
 
+                // TODO: Parse as negative number if there is a number right after minus sign
                 '-' => tokens.push_back(Token::Minus),
                 '!' => match self.peek() {
                     Some('=') => {
