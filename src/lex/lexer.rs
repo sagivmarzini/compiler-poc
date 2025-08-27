@@ -72,12 +72,7 @@ impl Lexer {
                         self.eat();
                         tokens.push_back(Token::Equal);
                     }
-                    _ => {
-                        return Err(format!(
-                            "Unexpected character '{}' at line {}, column {}",
-                            current, self.line_index, self.inline_pos
-                        ));
-                    }
+                    _ => tokens.push_back(Token::Assignment),
                 },
                 '>' => match self.peek() {
                     Some('=') => {
@@ -103,6 +98,7 @@ impl Lexer {
                 'a'..='z' => match self.read_string(current)?.as_str() {
                     "function" => tokens.push_back(Token::Keyword(Keyword::Function)),
                     "return" => tokens.push_back(Token::Keyword(Keyword::Return)),
+                    "var" => tokens.push_back(Token::Keyword(Keyword::Var)),
                     string => tokens.push_back(Token::Identifier(String::from(string))),
                 },
                 _ => {

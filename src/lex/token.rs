@@ -18,6 +18,7 @@ pub enum Token {
     LessEqual,
     Greater,
     GreaterEqual,
+    Assignment,
     Keyword(Keyword),
     Identifier(String),
     Integer(i64),
@@ -28,4 +29,5 @@ pub enum Token {
 pub enum Keyword {
     Function,
     Return,
+    Var,
 }

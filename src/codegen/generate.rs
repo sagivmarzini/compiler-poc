@@ -103,68 +103,31 @@ impl CodeGenerator {
     }
 
     fn write_binary_operation(&mut self, binary_expression: &BinaryExpression) {
-        self.write_expr(&binary_expression.left);
+        // Evaluate right-hand side first
+        self.write_expr(&binary_expression.right);
         self.write_line("push rax");
 
-        self.write_expr(&binary_expression.right);
+        // Then evaluate left-hand side
+        self.write_expr(&binary_expression.left);
         self.write_line("pop rcx");
 
-        // RCX = left
-        // RAX = right
+        // RAX = left
+        // RCX = right
 
         match binary_expression.operator {
             Plus => self.write_line("add rax, rcx"),
             Multiply => self.write_line("imul rax, rcx"),
             Minus => {
-                self.write_line("sub rcx, rax");
-                self.write_line("mov rax, rcx");
+                self.write_line("sub rax, rcx");
             }
             Divide => {
-                self.write_line("xchg rax, rcx");
                 self.write_line("cqo");
                 self.write_line("idiv rcx");
             }
 
-            Or => {
-                let true_label = self.generate_label("true");
-                let false_label = self.generate_label("false");
-                let end_label = self.generate_label("end");
+            Or => self.write_logical_or_operator(),
+            And => self.write_logical_and_operator(),
 
-                self.write_line("cmp rcx, 0");
-                self.write_jump_instruction("jne", &true_label);
-                self.write_line("cmp rax, 0");
-                self.write_jump_instruction("je", &false_label);
-
-                self.start_label(&true_label);
-                self.write_line("mov rax, 1");
-                self.write_jump_instruction("jmp", &end_label);
-                self.close_label();
-
-                self.start_label(&false_label);
-                self.write_line("mov rax, 0");
-                self.close_label();
-
-                self.start_label(&end_label);
-                self.close_label();
-            }
-            And => {
-                let false_label = self.generate_label("false");
-                let end_label = self.generate_label("end");
-
-                self.write_line("cmp rcx, 0");
-                self.write_jump_instruction("je", &false_label);
-                self.write_line("cmp rax, 0");
-                self.write_jump_instruction("je", &false_label);
-                self.write_line("mov eax, 1");
-                self.write_jump_instruction("jmp", &end_label);
-
-                self.start_label(&false_label);
-                self.write_line("mov rax, 0");
-                self.close_label();
-
-                self.start_label(&end_label);
-                self.close_label();
-            }
             Equal => {
                 self.write_line("cmp rax, rcx");
                 self.write_line("sete al");
@@ -176,26 +139,68 @@ impl CodeGenerator {
                 self.write_line("movzx rax, al");
             }
             Less => {
-                self.write_line("cmp rcx, rax");
+                self.write_line("cmp rax, rcx");
                 self.write_line("setl al");
                 self.write_line("movzx rax, al");
             }
             LessEqual => {
-                self.write_line("cmp rcx, rax");
+                self.write_line("cmp rax, rcx");
                 self.write_line("setle al");
                 self.write_line("movzx rax, al");
             }
             Greater => {
-                self.write_line("cmp rcx, rax");
+                self.write_line("cmp rax, rcx");
                 self.write_line("setg al");
                 self.write_line("movzx rax, al");
             }
             GreaterEqual => {
-                self.write_line("cmp rcx, rax");
+                self.write_line("cmp rax, rcx");
                 self.write_line("setge al");
                 self.write_line("movzx rax, al");
             }
         }
+    }
+
+    fn write_logical_or_operator(&mut self) {
+        let true_label = self.generate_label("true");
+        let false_label = self.generate_label("false");
+        let end_label = self.generate_label("end");
+
+        self.write_line("cmp rcx, 0");
+        self.write_jump_instruction("jne", &true_label);
+        self.write_line("cmp rax, 0");
+        self.write_jump_instruction("je", &false_label);
+
+        self.start_label(&true_label);
+        self.write_line("mov rax, 1");
+        self.write_jump_instruction("jmp", &end_label);
+        self.close_label();
+
+        self.start_label(&false_label);
+        self.write_line("mov rax, 0");
+        self.close_label();
+
+        self.start_label(&end_label);
+        self.close_label();
+    }
+
+    fn write_logical_and_operator(&mut self) {
+        let false_label = self.generate_label("false");
+        let end_label = self.generate_label("end");
+
+        self.write_line("cmp rcx, 0");
+        self.write_jump_instruction("je", &false_label);
+        self.write_line("cmp rax, 0");
+        self.write_jump_instruction("je", &false_label);
+        self.write_line("mov eax, 1");
+        self.write_jump_instruction("jmp", &end_label);
+
+        self.start_label(&false_label);
+        self.write_line("mov rax, 0");
+        self.close_label();
+
+        self.start_label(&end_label);
+        self.close_label();
     }
 
     pub fn finalize(&self) -> &str {
