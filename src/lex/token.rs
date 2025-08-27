@@ -18,7 +18,7 @@ pub enum Token {
     LessEqual,
     Greater,
     GreaterEqual,
-    Assignment,
+    Assignment, // '='
     Keyword(Keyword),
     Identifier(String),
     Integer(i64),

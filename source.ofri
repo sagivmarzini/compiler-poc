@@ -1,7 +1,5 @@
 function main() {
-  var x = 10;
-  x = x + 2;
-  return x;
+  var x = 60 + 7;
 }
 
 function foo() {

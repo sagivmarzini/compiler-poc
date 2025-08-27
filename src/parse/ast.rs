@@ -1,31 +1,32 @@
 #[derive(Debug)]
 pub struct Program {
-    pub body: Vec<Stmt>,
+    pub body: Vec<Statement>,
 }
 
 impl Program {
     pub fn new() -> Self {
         Program {
-            body: Vec::<Stmt>::new(),
+            body: Vec::<Statement>::new(),
         }
     }
 }
 
 #[derive(Debug)]
-pub enum Stmt {
+pub enum Statement {
     Function(Function),
-    Return(Box<Expr>),
-    Expr(Box<Expr>),
+    Return(Box<Expression>),
+    VarDeclaration(VarDeclaration),
+    Expression(Box<Expression>),
 }
 
 #[derive(Debug)]
 pub struct Function {
     pub name: String,
-    pub body: Vec<Stmt>,
+    pub body: Vec<Statement>,
 }
 
 #[derive(Debug)]
-pub enum Expr {
+pub enum Expression {
     IntegerLiteral(i64),
     Identifier(String),
     UnaryExpr(UnaryExpression),
@@ -35,7 +36,7 @@ pub enum Expr {
 #[derive(Debug)]
 pub struct UnaryExpression {
     pub operator: UnaryOperator,
-    pub operand: Box<Expr>,
+    pub operand: Box<Expression>,
 }
 
 #[derive(Debug)]
@@ -46,9 +47,9 @@ pub enum UnaryOperator {
 
 #[derive(Debug)]
 pub struct BinaryExpression {
-    pub left: Box<Expr>,
+    pub left: Box<Expression>,
     pub operator: BinaryOperator,
-    pub right: Box<Expr>,
+    pub right: Box<Expression>,
 }
 
 #[derive(Debug)]
@@ -65,4 +66,10 @@ pub enum BinaryOperator {
     LessEqual,
     Greater,
     GreaterEqual,
+}
+
+#[derive(Debug)]
+pub struct VarDeclaration {
+    pub var_name: String,
+    pub value: Box<Expression>,
 }

@@ -2,9 +2,12 @@ use std::collections::VecDeque;
 use thiserror::Error;
 
 use super::ast::{
-    BinaryExpression, BinaryOperator, Expr, Function, Program, Stmt, UnaryExpression, UnaryOperator,
+    BinaryExpression, BinaryOperator, Expression, Function, Program, Statement, UnaryExpression,
+    UnaryOperator,
 };
+use crate::lex::token::Keyword::*;
 use crate::lex::token::Token;
+use crate::parse::ast::VarDeclaration;
 
 #[derive(Debug, Error)]
 pub enum ParseError {
@@ -16,6 +19,8 @@ pub enum ParseError {
     ExpectedToken(Token),
     #[error("Unexpected end of file")]
     UnexpectedEOF,
+    #[error("Expected '=' or ';' token after variable declaration")]
+    ExpectedAssignmentOrSemicolon,
     #[error("{0}")]
     Custom(String),
 }
@@ -40,12 +45,12 @@ impl Parser {
     }
 
     // Recursive functions
-    fn parse_statement(&mut self) -> Result<Stmt, ParseError> {
+    fn parse_statement(&mut self) -> Result<Statement, ParseError> {
         let token = self.peek().ok_or(ParseError::UnexpectedEOF)?;
 
         match token {
             Token::Keyword(keyword) => match keyword {
-                crate::lex::token::Keyword::Function => {
+                Function => {
                     self.eat(); // 'function' keyword
 
                     // Peek or eat the next token and ensure it is an identifier
@@ -69,29 +74,59 @@ impl Parser {
                     }
                     self.expect(Token::RBrace)?;
 
-                    Ok(Stmt::Function(Function {
+                    Ok(Statement::Function(Function {
                         name: func_name,
                         body,
                     }))
                 }
-                crate::lex::token::Keyword::Return => {
+                Return => {
                     self.eat(); // 'return' keyword
 
                     let expr = self.parse_expression()?;
                     self.expect(Token::Semicolon)?;
 
-                    Ok(Stmt::Return(Box::new(expr)))
+                    Ok(Statement::Return(Box::new(expr)))
+                }
+                Var => {
+                    self.eat(); // 'var' keyword
+
+                    let var_name = self.expect_identifier()?;
+                    let var_value: Box<Expression>;
+
+                    match self.peek() {
+                        Some(Token::Assignment) => {
+                            self.eat();
+
+                            let expression = self.parse_expression()?;
+                            var_value = Box::new(expression);
+
+                            self.expect(Token::Semicolon)?;
+                        }
+                        Some(Token::Semicolon) => {
+                            self.eat();
+
+                            // Uninitialized variable defaults to 0
+                            var_value = Box::new(Expression::IntegerLiteral(0));
+                        }
+                        Some(_) => return Err(ParseError::ExpectedAssignmentOrSemicolon),
+                        None => return Err(ParseError::ExpectedAssignmentOrSemicolon),
+                    }
+
+                    Ok(Statement::VarDeclaration(VarDeclaration {
+                        var_name,
+                        value: var_value,
+                    }))
                 }
             },
             _ => Err(ParseError::UnexpectedToken(token.clone())),
         }
     }
 
-    fn parse_expression(&mut self) -> Result<Expr, ParseError> {
+    fn parse_expression(&mut self) -> Result<Expression, ParseError> {
         self.parse_logic_or_expression()
     }
 
-    fn parse_logic_or_expression(&mut self) -> Result<Expr, ParseError> {
+    fn parse_logic_or_expression(&mut self) -> Result<Expression, ParseError> {
         let mut left = self.parse_logic_and_expression()?;
 
         while let Some(operator) = self.peek().and_then(Parser::token_to_binary_operator) {
@@ -103,7 +138,7 @@ impl Parser {
 
             let right = self.parse_logic_and_expression()?;
 
-            left = Expr::BinaryExpr(BinaryExpression {
+            left = Expression::BinaryExpr(BinaryExpression {
                 left: Box::new(left),
                 operator,
                 right: Box::new(right),
@@ -113,7 +148,7 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_logic_and_expression(&mut self) -> Result<Expr, ParseError> {
+    fn parse_logic_and_expression(&mut self) -> Result<Expression, ParseError> {
         let mut left = self.parse_equality_expression()?;
 
         while let Some(operator) = self.peek().and_then(Parser::token_to_binary_operator) {
@@ -125,7 +160,7 @@ impl Parser {
 
             let right = self.parse_equality_expression()?;
 
-            left = Expr::BinaryExpr(BinaryExpression {
+            left = Expression::BinaryExpr(BinaryExpression {
                 left: Box::new(left),
                 operator,
                 right: Box::new(right),
@@ -135,7 +170,7 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_equality_expression(&mut self) -> Result<Expr, ParseError> {
+    fn parse_equality_expression(&mut self) -> Result<Expression, ParseError> {
         let mut left = self.parse_comparison_expression()?;
 
         while let Some(operator) = self.peek().and_then(Parser::token_to_binary_operator) {
@@ -147,7 +182,7 @@ impl Parser {
 
             let right = self.parse_comparison_expression()?;
 
-            left = Expr::BinaryExpr(BinaryExpression {
+            left = Expression::BinaryExpr(BinaryExpression {
                 left: Box::new(left),
                 operator,
                 right: Box::new(right),
@@ -157,7 +192,7 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_comparison_expression(&mut self) -> Result<Expr, ParseError> {
+    fn parse_comparison_expression(&mut self) -> Result<Expression, ParseError> {
         let mut left = self.parse_additive_expression()?;
 
         while let Some(operator) = self.peek().and_then(Parser::token_to_binary_operator) {
@@ -175,7 +210,7 @@ impl Parser {
 
             let right = self.parse_additive_expression()?;
 
-            left = Expr::BinaryExpr(BinaryExpression {
+            left = Expression::BinaryExpr(BinaryExpression {
                 left: Box::new(left),
                 operator,
                 right: Box::new(right),
@@ -185,7 +220,7 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_additive_expression(&mut self) -> Result<Expr, ParseError> {
+    fn parse_additive_expression(&mut self) -> Result<Expression, ParseError> {
         let mut left = self.parse_multiplicative_expression()?;
 
         while let Some(operator) = self.peek().and_then(Parser::token_to_binary_operator) {
@@ -197,7 +232,7 @@ impl Parser {
 
             let right = self.parse_multiplicative_expression()?;
 
-            left = Expr::BinaryExpr(BinaryExpression {
+            left = Expression::BinaryExpr(BinaryExpression {
                 left: Box::new(left),
                 operator,
                 right: Box::new(right),
@@ -207,7 +242,7 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_multiplicative_expression(&mut self) -> Result<Expr, ParseError> {
+    fn parse_multiplicative_expression(&mut self) -> Result<Expression, ParseError> {
         let mut left = self.parse_unary_expression()?;
 
         while let Some(operator) = self.peek().and_then(Parser::token_to_binary_operator) {
@@ -219,7 +254,7 @@ impl Parser {
 
             let right = self.parse_unary_expression()?;
 
-            left = Expr::BinaryExpr(BinaryExpression {
+            left = Expression::BinaryExpr(BinaryExpression {
                 left: Box::new(left),
                 operator,
                 right: Box::new(right),
@@ -229,14 +264,14 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_unary_expression(&mut self) -> Result<Expr, ParseError> {
+    fn parse_unary_expression(&mut self) -> Result<Expression, ParseError> {
         if let Some(token) = self.peek() {
             if let Some(operator) = Parser::token_to_unary_operator(token) {
                 self.eat(); // consume the operator
 
                 let operand = self.parse_unary_expression()?; // recursive for chains
 
-                return Ok(Expr::UnaryExpr(UnaryExpression {
+                return Ok(Expression::UnaryExpr(UnaryExpression {
                     operator,
                     operand: Box::new(operand),
                 }));
@@ -246,10 +281,10 @@ impl Parser {
         self.parse_primary()
     }
 
-    fn parse_primary(&mut self) -> Result<Expr, ParseError> {
+    fn parse_primary(&mut self) -> Result<Expression, ParseError> {
         match self.eat() {
-            Some(Token::Integer(num)) => Ok(Expr::IntegerLiteral(num)),
-            Some(Token::Identifier(identifier)) => Ok(Expr::Identifier(identifier)),
+            Some(Token::Integer(num)) => Ok(Expression::IntegerLiteral(num)),
+            Some(Token::Identifier(identifier)) => Ok(Expression::Identifier(identifier)),
             Some(token) => Err(ParseError::UnexpectedToken(token.clone())),
             None => Err(ParseError::UnexpectedEOF),
         }
@@ -265,12 +300,20 @@ impl Parser {
     fn check(&self, token: Token) -> bool {
         *self.tokens.front().unwrap() == token
     }
+    /// Eats the next token and returns an error if it's not the expected token
     fn expect(&mut self, expect: Token) -> Result<Token, ParseError> {
         let token = self.eat();
 
         match token {
             Some(token) if token == expect => Ok(token),
             Some(_) => Err(ParseError::ExpectedToken(expect)),
+            None => Err(ParseError::UnexpectedEOF),
+        }
+    }
+    fn expect_identifier(&mut self) -> Result<String, ParseError> {
+        match self.eat() {
+            Some(Token::Identifier(name)) => Ok(name),
+            Some(other) => Err(ParseError::UnexpectedToken(other)),
             None => Err(ParseError::UnexpectedEOF),
         }
     }
