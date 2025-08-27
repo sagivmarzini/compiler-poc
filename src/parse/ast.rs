@@ -29,8 +29,8 @@ pub struct Function {
 pub enum Expression {
     IntegerLiteral(i64),
     Identifier(String),
-    UnaryExpr(UnaryExpression),
-    BinaryExpr(BinaryExpression),
+    UnaryExpression(UnaryExpression),
+    BinaryExpression(BinaryExpression),
 }
 
 #[derive(Debug)]

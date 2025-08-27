@@ -34,7 +34,7 @@ fn main() {
 
     let codegen_start = Instant::now();
     let mut generator = CodeGenerator::new();
-    generator.write_program(&program);
+    generator.emit_program(&program);
     let codegen_time = codegen_start.elapsed();
     println!("Program: \n{}\n", generator.finalize());
 

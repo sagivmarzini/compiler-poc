@@ -82,10 +82,10 @@ impl Parser {
                 Return => {
                     self.eat(); // 'return' keyword
 
-                    let expr = self.parse_expression()?;
+                    let expression = self.parse_expression()?;
                     self.expect(Token::Semicolon)?;
 
-                    Ok(Statement::Return(Box::new(expr)))
+                    Ok(Statement::Return(Box::new(expression)))
                 }
                 Var => {
                     self.eat(); // 'var' keyword
@@ -138,7 +138,7 @@ impl Parser {
 
             let right = self.parse_logic_and_expression()?;
 
-            left = Expression::BinaryExpr(BinaryExpression {
+            left = Expression::BinaryExpression(BinaryExpression {
                 left: Box::new(left),
                 operator,
                 right: Box::new(right),
@@ -160,7 +160,7 @@ impl Parser {
 
             let right = self.parse_equality_expression()?;
 
-            left = Expression::BinaryExpr(BinaryExpression {
+            left = Expression::BinaryExpression(BinaryExpression {
                 left: Box::new(left),
                 operator,
                 right: Box::new(right),
@@ -182,7 +182,7 @@ impl Parser {
 
             let right = self.parse_comparison_expression()?;
 
-            left = Expression::BinaryExpr(BinaryExpression {
+            left = Expression::BinaryExpression(BinaryExpression {
                 left: Box::new(left),
                 operator,
                 right: Box::new(right),
@@ -210,7 +210,7 @@ impl Parser {
 
             let right = self.parse_additive_expression()?;
 
-            left = Expression::BinaryExpr(BinaryExpression {
+            left = Expression::BinaryExpression(BinaryExpression {
                 left: Box::new(left),
                 operator,
                 right: Box::new(right),
@@ -232,7 +232,7 @@ impl Parser {
 
             let right = self.parse_multiplicative_expression()?;
 
-            left = Expression::BinaryExpr(BinaryExpression {
+            left = Expression::BinaryExpression(BinaryExpression {
                 left: Box::new(left),
                 operator,
                 right: Box::new(right),
@@ -254,7 +254,7 @@ impl Parser {
 
             let right = self.parse_unary_expression()?;
 
-            left = Expression::BinaryExpr(BinaryExpression {
+            left = Expression::BinaryExpression(BinaryExpression {
                 left: Box::new(left),
                 operator,
                 right: Box::new(right),
@@ -271,7 +271,7 @@ impl Parser {
 
                 let operand = self.parse_unary_expression()?; // recursive for chains
 
-                return Ok(Expression::UnaryExpr(UnaryExpression {
+                return Ok(Expression::UnaryExpression(UnaryExpression {
                     operator,
                     operand: Box::new(operand),
                 }));
