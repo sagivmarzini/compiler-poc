@@ -1,6 +1,6 @@
 function main() {
   var a = 60 + 7;
-  var b = c + 2;
+  var b = a + 2;
   return b;
 }
 

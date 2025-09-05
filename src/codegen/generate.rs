@@ -4,10 +4,7 @@ use super::context::Context;
 use super::snippets;
 use crate::{
     codegen::context::ScopeData,
-    parse::ast::{
-        self, BinaryExpression, BinaryOperator::*, Expression, Function, Program, Statement,
-        UnaryExpression,
-    },
+    parse::ast::{self, BinaryExpression, BinaryOperator::*, *},
 };
 
 const VAR_SIZE_BYTES: i64 = 8;
