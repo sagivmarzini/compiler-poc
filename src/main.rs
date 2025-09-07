@@ -46,7 +46,7 @@ fn main() {
         parse_time.as_secs_f64() * 1000.0
     );
 
-    println!("IR: \n{:?}\n", ir);
+    println!("IR: \n{}\n", ir);
 
     // # Target Code Generation
     let codegen_start = Instant::now();
