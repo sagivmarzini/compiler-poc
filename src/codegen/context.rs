@@ -36,9 +36,9 @@ impl Context {
 
 pub struct ScopeData {
     /// <VariableName, StackOffset>
-    pub locals: HashMap<String, i64>,
+    pub locals: HashMap<String, i32>,
     /// Grows upwards in jumps of a variable size (e.g. 8)
-    pub stack_offset: i64,
+    pub stack_offset: i32,
 }
 
 impl ScopeData {

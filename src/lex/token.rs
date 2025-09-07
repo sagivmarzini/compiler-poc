@@ -21,7 +21,7 @@ pub enum Token {
     Assignment, // '='
     Keyword(Keyword),
     Identifier(String),
-    Integer(i64),
+    Integer(i32),
     EOF,
 }
 

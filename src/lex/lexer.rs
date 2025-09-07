@@ -124,7 +124,7 @@ impl Lexer {
         self.source.pop_front()
     }
 
-    fn read_number(&mut self, first: char) -> Result<i64, String> {
+    fn read_number(&mut self, first: char) -> Result<i32, String> {
         let mut num_str = String::new();
         num_str.push(first);
 
@@ -136,7 +136,7 @@ impl Lexer {
             }
         }
 
-        Ok(num_str.parse::<i64>().unwrap())
+        Ok(num_str.parse::<i32>().unwrap())
     }
 
     fn read_string(&mut self, first: char) -> Result<String, String> {

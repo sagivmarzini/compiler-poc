@@ -267,6 +267,11 @@ impl TacGenerator {
         expression: &ast::Expression,
         instruction_list: &mut Vec<Instruction>,
     ) -> Operand {
-        Operand::Temp(1)
+        match expression {
+            ast::Expression::IntegerLiteral(number) => Operand::Const(*number),
+            ast::Expression::Identifier(identifier) => Operand::Var(identifier.clone()),
+            ast::Expression::UnaryExpression(unary_expression) => todo!(),
+            ast::Expression::BinaryExpression(binary_expression) => todo!(),
+        }
     }
 }

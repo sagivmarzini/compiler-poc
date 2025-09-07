@@ -7,12 +7,12 @@ use crate::{
     parse::ast::{self, BinaryExpression, BinaryOperator::*, *},
 };
 
-const VAR_SIZE_BYTES: i64 = 8;
+const VAR_SIZE_BYTES: i32 = 8;
 
 pub struct CodeGenerator {
     output: String,
     /// Global counter for unique labels
-    label_count: i64,
+    label_count: i32,
     indent_count: usize,
 }
 
@@ -286,7 +286,7 @@ impl CodeGenerator {
         self.indent_count -= 1;
     }
 
-    fn get_label_count(&mut self) -> i64 {
+    fn get_label_count(&mut self) -> i32 {
         let label = self.label_count;
         self.label_count += 1;
 
