@@ -270,8 +270,33 @@ impl TacGenerator {
         match expression {
             ast::Expression::IntegerLiteral(number) => Operand::Const(*number),
             ast::Expression::Identifier(identifier) => Operand::Var(identifier.clone()),
-            ast::Expression::UnaryExpression(unary_expression) => todo!(),
-            ast::Expression::BinaryExpression(binary_expression) => todo!(),
+            ast::Expression::UnaryExpression(unary_expression) => {
+                self.generate_unary_operation(unary_expression, instruction_list)
+            }
+            ast::Expression::BinaryExpression(binary_expression) => {
+                self.generate_binary_operation(binary_expression, instruction_list)
+            }
         }
+    }
+
+    fn generate_unary_operation(
+        &mut self,
+        unary_expression: &ast::UnaryExpression,
+        instruction_list: &mut Vec<Instruction>,
+    ) -> Operand {
+        let value = self.generate_expression(&unary_expression.operand, instruction_list);
+
+        match unary_expression.operator {
+            ast::UnaryOperator::Negative => todo!(),
+            ast::UnaryOperator::Not => todo!(),
+        }
+    }
+
+    fn generate_binary_operation(
+        &mut self,
+        binary_expression: &ast::BinaryExpression,
+        instruction_list: &mut Vec<Instruction>,
+    ) -> Operand {
+        todo!()
     }
 }

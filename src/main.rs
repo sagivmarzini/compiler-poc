@@ -40,10 +40,10 @@ fn main() {
     let mut ir_generator = TacGenerator::new();
     ir_generator.generate_tac(&program);
     let ir = ir_generator.get_program();
-    let ir_time = parse_start.elapsed();
+    let ir_time = ir_start.elapsed();
     println!(
         "IR generation took: {:.3}ms",
-        parse_time.as_secs_f64() * 1000.0
+        ir_time.as_secs_f64() * 1000.0
     );
 
     println!("IR: \n{}\n", ir);
